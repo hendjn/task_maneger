@@ -8,9 +8,7 @@ const userSchema = new mongoose.Schema({
     trim: true,
     required: true,
     lowercase: true,
-    validate: async function (value) {
-      await uniqueValidate("name", value);
-    },
+    
   },
   age: {
     type: Number,
@@ -30,12 +28,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true,
     required: true,
+    unique: true,
     lowercase: true,
     validate: async function (value) {
       if (!validator.isEmail(value)) {
         throw new Error("Error: the input should be an email");
       }
-      await uniqueValidate("email", value);
     },
   },
 });
@@ -48,18 +46,31 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-const uniqueValidate = async (feildName, value) => {
-  const findOneFilter = {};
-  findOneFilter[feildName] = value;
-  const isUsed = await mongoose
-    .model("Users", userSchema)
-    .findOne(findOneFilter)
-    .countDocuments();
-  if (isUsed) {
-    throw new Error(`Error: the ${feildName} already used`);
-  }
-};
+// const uniqueValidate = async (feildName, value) => {
+//   const findOneFilter = {};
+//   findOneFilter[feildName] = value;
+//   const isUsed = await mongoose
+//     .model("Users", userSchema)
+//     .findOne(findOneFilter)
+//     .countDocuments();
+//   if (isUsed) {
+//     throw new Error(`Error: the ${feildName} already used`);
+//   }
+// };
 
+userSchema.statics.findByCredentials = async (email, password) => {
+  console.log(email, password)
+  const user = await User.findOne({ email });
+  console.log(user)
+  if (!user) {
+    throw Error("Not registered user!");
+  }
+  const isValidePass = await bcrypt.compare(password, user.password);
+  if (!isValidePass) {
+    throw Error("Not a valide password");
+  }
+  return user;
+};
 const User = mongoose.model("Users", userSchema);
 
 module.exports = User;
