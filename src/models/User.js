@@ -8,6 +8,9 @@ const userSchema = new mongoose.Schema({
     trim: true,
     required: true,
     lowercase: true,
+    validate: async function (value) {
+      await uniqueValidate("name", value);
+    },
   },
   age: {
     type: Number,
@@ -29,27 +32,34 @@ const userSchema = new mongoose.Schema({
     required: true,
     lowercase: true,
     validate: async function (value) {
-     if(!validator.isEmail(value)) {
-        throw new Error("Error: the input should be an email")
+      if (!validator.isEmail(value)) {
+        throw new Error("Error: the input should be an email");
       }
-     const isUsed = await mongoose.model("User", userSchema).findOne({email: this.email}).countDocuments()
-     if(isUsed){
-       throw new Error("Error: the email already used");
-     }
-   
+      await uniqueValidate("email", value);
     },
   },
 });
 userSchema.pre("save", async function (next) {
   const user = this;
-  console.log(user)
+  console.log(user);
   if (user.isModified("password")) {
     user.password = await bcrypt.hash(user.password, 8);
   }
   next();
 });
 
-const User = mongoose.model("Users", userSchema);
+const uniqueValidate = async (feildName, value) => {
+  const findOneFilter = {};
+  findOneFilter[feildName] = value;
+  const isUsed = await mongoose
+    .model("Users", userSchema)
+    .findOne(findOneFilter)
+    .countDocuments();
+  if (isUsed) {
+    throw new Error(`Error: the ${feildName} already used`);
+  }
+};
 
+const User = mongoose.model("Users", userSchema);
 
 module.exports = User;
