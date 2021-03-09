@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 const validator = require("validator");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -8,7 +10,6 @@ const userSchema = new mongoose.Schema({
     trim: true,
     required: true,
     lowercase: true,
-    
   },
   age: {
     type: Number,
@@ -36,6 +37,14 @@ const userSchema = new mongoose.Schema({
       }
     },
   },
+  tokens: [
+    {
+      token: {
+        type: String,
+        required: true,
+      },
+    },
+  ],
 });
 userSchema.pre("save", async function (next) {
   const user = this;
@@ -57,11 +66,20 @@ userSchema.pre("save", async function (next) {
 //     throw new Error(`Error: the ${feildName} already used`);
 //   }
 // };
+userSchema.methods.generateAuthToken = async function () {
+  const user = this;
+  const token = jwt.sign(
+    { _id: user._id.toString() },
+    process.env.TOKEN_SECRET
+  );
+  user.tokens = await user.tokens.concat({ token });
+  user.save();
+  return token;
+};
 
-userSchema.statics.findByCredentials = async (email, password) => {
-  console.log(email, password)
-  const user = await User.findOne({ email });
-  console.log(user)
+userSchema.statics.findByCredentials = async function (email, password) {
+  //this here = Users collection
+  const user = await this.findOne({ email });
   if (!user) {
     throw Error("Not registered user!");
   }
