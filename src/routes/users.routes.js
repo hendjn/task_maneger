@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const express = require("express");
+const auth = require("../middleware/auth");
 
 const router = new express.Router();
 
@@ -24,16 +25,29 @@ router.post("/users/login", async(req, res) => {
   }
 });
 
-router.get("/users", async (req, res) => {
+router.post("/users/logout", auth, async(req, res) => {
+  try{
+    console.log(console.log('token', req.token))
+    const user = await User.findById(req.user._id);
+    user.tokens = user.tokens.filter(tokenObj => tokenObj.token!=req.token);
+    
+    await user.save();
+    
+    res.status(200).send({msg: 'Logged out successfuly!'})
+  }catch(e){
+    res.status(400).send(`Error: ${e}`)
+  }
+});
+
+router.get("/users/me",auth, async (req, res) => {
   try {
-    const users = await User.find();
-    res.status(200).send(users);
+    res.status(200).send(req.user);
   } catch (e) {
     res.status(500).send(`Error: ${e}`);
   }
 });
 
-router.get("/users/:id", async (req, res) => {
+router.get("/users/:id", auth, async (req, res) => {
   try {
     const id = req.params.id;
     const user = await User.find({ _id: id });
@@ -43,7 +57,7 @@ router.get("/users/:id", async (req, res) => {
   }
 });
 
-router.patch("/users/:id", async (req, res) => {
+router.patch("/users/:id", auth, async (req, res) => {
   try {
     const keys = Object.keys(req.body);
     const allowedUpdates = ["name", "email", "password", "age"];
@@ -62,7 +76,7 @@ router.patch("/users/:id", async (req, res) => {
   }
 });
 
-router.delete("/users", async (req, res) => {
+router.delete("/users", auth, async (req, res) => {
   try {
     const id = req.query.id;
     const user = await User.findByIdAndDelete(id);
